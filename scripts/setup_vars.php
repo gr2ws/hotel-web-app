@@ -3,7 +3,7 @@
 function getPersonData()
 {
     return [
-        'id'       => $_POST['fname'] ?? '',
+        'id'       => $_POST['id'] ?? '',
         'fname'    => $_POST['fname'] ?? '',
         'lname'    => $_POST['lname'] ?? '',
         'address'  => $_POST['address'] ?? '',

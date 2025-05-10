@@ -3,7 +3,14 @@
 require 'common.php';
 
 session_start();
-$message = handleLogin();
+
+// Prepare a message variable
+$loginMessage = null;
+
+// Handle login before output
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $loginMessage = handleLogin(); // update handleLogin to return message or null
+}
 ?>
 
 <!DOCTYPE html>
@@ -21,7 +28,11 @@ $message = handleLogin();
 
     <div class="login-body container-fluid my-auto d-flex flex-column justify-center align-items-center">
 
-        <?php echo $message ?>
+        <?php
+        if ($loginMessage) {
+            echo $loginMessage;
+        }
+        ?>
 
         <div class="login-container py-4">
             <h1>Sign In</h1>

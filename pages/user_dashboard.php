@@ -2,22 +2,31 @@
 session_start();
 
 if (!isset($_SESSION['id'])) {
-    header('Location: login.php');
-    exit();
+    header("Location: login.php");
+    exit;
 }
 
-require 'common.php';
+require '../scripts/handle_edit.php';
+require '../scripts/handle_pass.php';
 
-// setting data taken from process_login.php
+// Show update result message only if form was submitted
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['profile_submit'])) {
+    $message = handleEdit($_SESSION['id']);
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['password_submit'])) {
+    $message = handleChangePass($_SESSION['id'], $_POST['new_password'], $_POST['confirm_password']);
+}
+
+
+// setting data for ui
 $id = $_SESSION['id'];
 $fname = $_SESSION['fname'];
 $lname = $_SESSION['lname'];
-$email = $_SESSION['email'];
 $address = $_SESSION['address'];
 $phone = $_SESSION['phone'];
-$birth = $_SESSION['birth'];
-$pass = $_SESSION['password'];
-
+$birth = $_SESSION['birthday'];
+$email = $_SESSION['email'];
+$pass = $_SESSION['pass'];
 ?>
 
 <!DOCTYPE html>
@@ -32,64 +41,10 @@ $pass = $_SESSION['password'];
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="../styles/user-dashboard.css">
     <link rel="stylesheet" href="../styles/index.css">
+    <?php require_once 'common.php'; ?>
 </head>
 
 <body>
-
-    <?php
-
-    // get db config data
-    $dbConfig  = getDbConfig();
-    $servername = $dbConfig['servername'];
-    $username   = $dbConfig['username'];
-    $dbpassword = $dbConfig['password'];
-    $dbname     = $dbConfig['dbname'];
-
-    $conn = new mysqli($servername, $username, $dbpassword, $dbname);
-
-    if ($conn->connect_error) {
-        return '<div class="alert alert-danger mt-3">Database connection failed.</div>';
-    }
-
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-        //get data from person table
-        $personData = getPersonData();
-        $fname     = $personData['fname'];
-        $lname     = $personData['lname'];
-        $address   = $personData['address'];
-        $phone     = $personData['phone'];
-        $birthday  = $personData['birthday'];
-        $email     = $personData['email'];
-        $pass      = $personData['pass'];
-
-        $SQLcommand =  "UPDATE person 
-                            SET 
-                                pers_fname = '$fname',
-                                pers_lname = '$lname',
-                                pers_address = '$address',
-                                pers_number = '$phone',
-                                pers_birthdate = '$birth'
-                            WHERE pers_id = $id";
-
-        if ($conn->query($SQLcommand) === TRUE) {
-            echo    '<div class="alert alert-success d-flex align-items-center mt-4 mb-n2 w-50" role="alert">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user-round-check-icon lucide-user-round-check"><path d="M2 21a8 8 0 0 1 13.292-6"/><circle cx="10" cy="8" r="5"/><path d="m16 19 2 2 4-4"/></svg>									
-                            <div class = "ms-3">	
-                                User profile edited successfully!
-                            </div>
-                        </div>';
-        } else {
-            return '<div class="alert alert-danger d-flex align-items-center mt-4 w-50" role="alert">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor"
-                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="lucide lucide-circle-x me-2"><circle cx="12" cy="12" r="10"/>
-                            <path d="m15 9-6 6"/><path d="m9 9 6 6"/></svg>
-                        <div>Incorrect email or password. Please try again.</div>
-                    </div>';
-        }
-    }
-    ?>
 
     <!-- Header Navigation -->
     <nav class="header-nav navbar navbar-expand-md shadow-sm">
@@ -148,7 +103,7 @@ $pass = $_SESSION['password'];
                     <a class="dropdown-item" href="#profile" data-tab="profile">Profile</a>
                     <a class="dropdown-item" href="#settings" data-tab="settings">Settings</a>
                     <hr class="dropdown-divider">
-                    <a class="dropdown-item text-danger" href="./login.php">Logout</a> <!-- PLEASE CHANGE -->
+                    <a class="dropdown-item text-danger" href="../scripts/handle_logout.php">Logout</a>
                 </div>
             </div>
         </div>
@@ -158,28 +113,32 @@ $pass = $_SESSION['password'];
     <main class="container mt-4">
         <div class="row">
             <!-- Sidebar Navigation -->
-            <div class="col-md-2">
+            <div class="col-md-2 pb-4 pb-lg-0">
                 <div class="card shadow-sm">
                     <div class="card-body">
                         <nav>
                             <ul class="nav flex-column">
                                 <li class="nav-item">
-                                    <a href="#dashboard" class="nav-link active" data-tab="dashboard">
+                                    <a href="#dashboard" class="nav-link active" data-tab="dashboard"
+                                        onclick="ridMessage()">
                                         <i class="bi bi-speedometer2"></i> Dashboard
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="#reservations" class="nav-link" data-tab="reservations">
+                                    <a href="#reservations" class="nav-link" data-tab="reservations"
+                                        onclick="ridMessage()">
                                         <i class="bi bi-calendar-check"></i> My Reservations
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="#profile" class="nav-link" data-tab="profile">
+                                    <a href="#profile" class="nav-link" data-tab="profile"
+                                        onclick="ridMessage()">
                                         <i class="bi bi-person"></i> Profile
                                     </a>
                                 </li>
                                 <li class="nav-item">
-                                    <a href="#settings" class="nav-link" data-tab="settings">
+                                    <a href="#settings" class="nav-link" data-tab="settings"
+                                        onclick="ridMessage()">
                                         <i class="bi bi-gear"></i> Settings
                                     </a>
                                 </li>
@@ -191,11 +150,14 @@ $pass = $_SESSION['password'];
 
             <!-- Content Area -->
             <div class="col-md-7">
+
+                <?php echo $message ?? ''; ?>
+
                 <!-- Dashboard Section -->
                 <div class="content-section" id="dashboard-content">
                     <div class="card shadow-sm mb-4">
                         <div class="card-body">
-                            <h2 class="card-title border-bottom pb-2">Welcome Back, <?php echo $fname; ?>!</h2>
+                            <h2 class="card-title border-bottom pb-2">Welcome back, <?php echo $fname . "!"; ?></h2>
                             <p class="lead">Here's an overview of your activity and available rooms.</p>
                         </div>
                     </div>
@@ -290,8 +252,21 @@ $pass = $_SESSION['password'];
                 <div class="content-section d-none" id="profile-content">
                     <div class="card shadow-sm">
                         <div class="card-body">
-                            <h2 class="card-title border-bottom pb-2">My Profile</h2>
-                            <form method="POST" action="./user_dashboard.php#profile" id="profileForm" class="mt-4">
+                            <div class="w-100 d-flex justify-content-between align-items-center">
+                                <h2 class="card-title mt-2">My Profile</h2>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
+                                    onclick="makeEditable()">Edit Profile</button>
+                            </div>
+
+                            <hr>
+
+                            <form id="profileForm" method="POST" action="./user_dashboard.php" class="mt-4">
+
+                                <!-- flag for conditional data handling based on what form was submitted -->
+                                <input type="hidden" name="profile_submit" value="1">
+
                                 <!-- <div class="mb-4">
                                     <div class="d-flex align-items-center gap-3 mb-3">
                                         <img src="< ?php echo htmlspecialchars($userData['profile_photo'] ?? 'images/default-avatar.png'); ?>"
@@ -304,14 +279,14 @@ $pass = $_SESSION['password'];
                                 </div> -->
                                 <div class="row">
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">First Name</label>
-                                        <input type="text" class="form-control" name="first_name"
-                                            value="<?php echo $fname; ?>" required>
+                                        <label for="fname" class="form-label">First Name</label>
+                                        <input type="text" class="form-control" id="fname" name="fname"
+                                            value="<?php echo $fname; ?>" disabled required>
                                     </div>
                                     <div class="col-md-6 mb-3">
-                                        <label class="form-label">Last Name</label>
-                                        <input type="text" class="form-control" name="last_name"
-                                            value="<?php echo $lname; ?>" required>
+                                        <label for="lname" class="form-label">Last Name</label>
+                                        <input type="text" class="form-control" id="lname" name="lname"
+                                            value="<?php echo $lname; ?>" disabled required>
                                     </div>
                                 </div>
                                 <div class="mb-3">
@@ -321,8 +296,10 @@ $pass = $_SESSION['password'];
                                         class="form-control"
                                         id="birth"
                                         name="birth"
-                                        required
-                                        value="<?php echo $birth; ?>" required>
+                                        disabled
+                                        value="<?php echo $birth; ?>"
+                                        required>
+                                    <small><i class="text-muted">Format: dd/mm/yyyy</i></small>
                                 </div>
                                 <div class="mb-3">
                                     <label for="phone" class="form-label">Phone</label>
@@ -333,12 +310,14 @@ $pass = $_SESSION['password'];
                                         name="phone"
                                         pattern="[0-9]{4}-[0-9]{3}-[0-9]{4}"
                                         value="<?php echo $phone; ?>"
+                                        maxlength="13"
+                                        disabled
                                         required />
                                     <small><i class="text-muted">Format: 0912-345-6789</i></small>
                                 </div>
                                 <div class="mb-3">
                                     <label class="form-label">Address</label>
-                                    <textarea class="form-control" name="address" rows="3"><?php echo $address; ?></textarea>
+                                    <textarea class="form-control" name="address" rows="3" disabled><?php echo $address; ?></textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary">
                                     <i class="bi bi-check-lg"></i> Save Changes
@@ -353,38 +332,95 @@ $pass = $_SESSION['password'];
                     <div class="card shadow-sm">
                         <div class="card-body">
                             <h2 class="card-title border-bottom pb-2">Account Settings</h2>
-                            <form id="settingsForm" class="mt-4">
+                            <form id="settingsForm" method="POST" action="./user_dashboard.php" class="mt-4">
+
+                                <!-- flag for conditional data handling based on what form was submitted -->
+                                <input type="hidden" name="password_submit" value="1">
+
                                 <div class="mb-4">
-                                    <h5>Change Password</h5>
+                                    <h4>Change Password</h4>
+                                    <br>
                                     <div class="mb-3">
-                                        <label class="form-label">Current Password</label>
-                                        <input type="password" class="form-control" name="current_password">
+                                        <div class="d-flex justify-center align-center gap-2 mb-2">
+                                            <label class="form-label mb-0">Current Password</label>
+                                            <button type="button" id="one" class="togshow-pword show-pword d-block" onclick="showPass('current_password', 'one', 'two')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye">
+                                                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" id="two" class="toghide-pword hide-pword d-none" onclick="hidePass('current_password', 'one', 'two')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off-icon lucide-eye-off">
+                                                    <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+                                                    <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                                                    <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+                                                    <path d="m2 2 20 20" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <input type="password" class="form-control" id="current_password" name="current_password" value="<?php echo $pass; ?>" disabled>
+                                        <br>
+                                        <small><i class="text-muted">Please ensure that you input the same new password in the two fields below.</i></small>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">New Password</label>
-                                        <input type="password" class="form-control" name="new_password" minlength="8">
+                                        <div class="d-flex justify-center align-center gap-2 mb-2">
+                                            <label class="form-label" for="new_password">New Password</label>
+                                            <button type="button" id="three" class="togshow-pword show-pword d-block" onclick="showPass('new_password', 'three', 'four')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye">
+                                                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" id="four" class="toghide-pword hide-pword d-none" onclick="hidePass('new_password', 'three', 'four')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off-icon lucide-eye-off">
+                                                    <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+                                                    <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                                                    <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+                                                    <path d="m2 2 20 20" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <input type="password" class="form-control" id="new_password" name="new_password" minlength="8" maxlength="30" required>
                                     </div>
                                     <div class="mb-3">
-                                        <label class="form-label">Confirm New Password</label>
-                                        <input type="password" class="form-control" name="confirm_password" minlength="8">
+                                        <div class="d-flex justify-center align-center gap-2 mb-2">
+
+                                            <label class="form-label" for="confirm_password">Confirm New Password</label>
+                                            <button type="button" id="five" class="togshow-pword show-pword d-block" onclick="showPass('confirm_password', 'five', 'six')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-icon lucide-eye">
+                                                    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                                                    <circle cx="12" cy="12" r="3" />
+                                                </svg>
+                                            </button>
+                                            <button type="button" id="six" class="toghide-pword hide-pword d-none" onclick="hidePass('confirm_password', 'five', 'six')">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-eye-off-icon lucide-eye-off">
+                                                    <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+                                                    <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+                                                    <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+                                                    <path d="m2 2 20 20" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" minlength="8" maxlength="30" required>
                                     </div>
+
                                     <button type="submit" class="btn btn-primary">
                                         <i class="bi bi-key"></i> Update Password
                                     </button>
                                 </div>
-                                <hr>
+                                <!-- <hr>
                                 <div class="mb-4">
                                     <h5>Notification Preferences</h5>
                                     <div class="form-check mb-2">
                                         <input type="checkbox" class="form-check-input" id="emailNotifs" name="email_notifications"
-                                            <?php echo isset($userData['email_notifications']) && $userData['email_notifications'] ? 'checked' : ''; ?>>
+                                            < ?php echo isset($userData['email_notifications']) && $userData['email_notifications'] ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="emailNotifs">
                                             Email Notifications
                                         </label>
                                     </div>
                                     <div class="form-check mb-2">
                                         <input type="checkbox" class="form-check-input" id="smsNotifs" name="sms_notifications"
-                                            <?php echo isset($userData['sms_notifications']) && $userData['sms_notifications'] ? 'checked' : ''; ?>>
+                                            < ?php echo isset($userData['sms_notifications']) && $userData['sms_notifications'] ? 'checked' : ''; ?>>
                                         <label class="form-check-label" for="smsNotifs">
                                             SMS Notifications
                                         </label>
@@ -392,7 +428,7 @@ $pass = $_SESSION['password'];
                                     <button type="submit" class="btn btn-primary mt-3">
                                         <i class="bi bi-save"></i> Save Preferences
                                     </button>
-                                </div>
+                                </div> -->
                             </form>
                         </div>
                     </div>
@@ -410,14 +446,14 @@ $pass = $_SESSION['password'];
                                 <label class="form-label">Check-in Date</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                                    <input type="text" class="form-control datepicker" id="checkIn" required>
+                                    <input type="text" class="form-control datepicker" id="checkIn" placeholder="Check-in Date" required>
                                 </div>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Check-out Date</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                                    <input type="text" class="form-control datepicker" id="checkOut" required>
+                                    <input type="text" class="form-control datepicker" id="checkOut" placeholder="Check-out Date" required>
                                 </div>
                             </div>
                             <button type="submit" class="btn btn-primary w-100">
@@ -452,12 +488,59 @@ $pass = $_SESSION['password'];
     </main>
 
     <!-- Toast Container -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <div id="liveToast" class="toast align-items-center text-bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMessage">
+                    <!-- Message will appear here -->
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="../scripts/user-dashboard.js"></script>
+    <script>
+        function ridMessage() {
+            document.querySelector(".alert").classList.remove('d-flex');
+            document.querySelector(".alert").classList.add('d-none');
+        }
+
+        function makeEditable() {
+            var readItems = document.querySelectorAll('input[disabled], textarea[disabled]');
+            readItems.forEach((readItem) => {
+                readItem.disabled = false;
+            })
+        }
+
+        function showPass(inputId, showBtnId, hideBtnId) {
+            const input = document.getElementById(inputId);
+            const showBtn = document.getElementById(showBtnId);
+            const hideBtn = document.getElementById(hideBtnId);
+
+            input.type = "text";
+            showBtn.classList.add("d-none");
+            showBtn.classList.remove("d-block");
+            hideBtn.classList.remove("d-none");
+            hideBtn.classList.add("d-block");
+        }
+
+        function hidePass(inputId, showBtnId, hideBtnId) {
+            const input = document.getElementById(inputId);
+            const showBtn = document.getElementById(showBtnId);
+            const hideBtn = document.getElementById(hideBtnId);
+
+            input.type = "password";
+            hideBtn.classList.add("d-none");
+            hideBtn.classList.remove("d-block");
+            showBtn.classList.remove("d-none");
+            showBtn.classList.add("d-block");
+        }
+    </script>
+
 </body>
 
 </html>
